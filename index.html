@@ -635,18 +635,18 @@ async function saveAllData(d) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        async function deleteEntry(id) { // Tambah async
-    if(confirm("Hapus?")) { 
-        const d = await getAllData(); // Ambil data terbaru
-        await saveAllData(d.filter(i => i.id !== id)); // Simpan setelah difilter
-        // Menjalankan fungsi async saat pertama kali dibuka
-(async () => {
-    await updateMonthFilterOptions();
-    await renderAll();
-})();
-    } 
-}
+        // 1. Perbaikan Fungsi Delete agar Sinkron
+        async function deleteEntry(id) {
+            if(confirm("Hapus?")) { 
+                const d = await getAllData();
+                const filteredData = d.filter(i => i.id !== id);
+                await saveAllData(filteredData); 
+                await updateMonthFilterOptions(); 
+                await renderAll(); 
+            } 
+        }
 
+        // 2. Fungsi Navigasi Tab (Tetap Sama)
         function openTab(e, n) {
             document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
             document.querySelectorAll("#tabList button").forEach(b => b.classList.remove("active-tab"));
@@ -654,24 +654,36 @@ async function saveAllData(d) {
             e.currentTarget.classList.add("active-tab");
         }
 
-        // Replace the bottom part of your script with this:
-async function initApp() {
-    // 1. Load Initial UI State
-    const initB = getMultiBalances()[currentActiveUser];
-    document.getElementById('initAtm').value = initB.atm;
-    document.getElementById('initInv').value = initB.inv;
-    document.getElementById('initCash').value = initB.cash;
-    document.getElementById('initOther').value = initB.other;
-    document.getElementById('inputDate').valueAsDate = new Date();
-    handleMainCatChange();
+        // 3. FUNGSI INISIALISASI UTAMA (MEMPERBAIKI ERROR CONSOLE)
+        // Fungsi ini memastikan data Cloud dimuat SEBELUM dashboard ditampilkan
+        async function startApp() {
+            try {
+                // Set input default
+                document.getElementById('inputDate').valueAsDate = new Date();
+                handleMainCatChange();
 
-    // 2. Fetch from Cloud and THEN Render
-    await updateMonthFilterOptions();
-    await renderAll();
-}
+                // Ambil Saldo Awal User
+                const initB = getMultiBalances()[currentActiveUser];
+                document.getElementById('initAtm').value = initB.atm;
+                document.getElementById('initInv').value = initB.inv;
+                document.getElementById('initCash').value = initB.cash;
+                document.getElementById('initOther').value = initB.other;
 
-// Start the app properly
-initApp();
+                // TAMPILKAN LOADING (Opsional di Console)
+                console.log("Menghubungkan ke Cloud...");
+
+                // MUAT DATA DARI CLOUD
+                await updateMonthFilterOptions();
+                await renderAll();
+                
+                console.log("Data berhasil dimuat.");
+            } catch (error) {
+                console.error("Gagal memulai aplikasi:", error);
+            }
+        }
+
+        // Jalankan aplikasi secara aman
+        startApp();
 
     </script>
 </body>
