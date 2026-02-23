@@ -385,12 +385,11 @@
 async function getAllData() {
     try {
         const response = await fetch(WEB_APP_URL);
-        if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
-        localStorage.setItem('financeData_V10', JSON.stringify(data)); // Backup lokal
+        localStorage.setItem('financeData_V10', JSON.stringify(data));
         return data || [];
     } catch (e) {
-        console.error("Cloud Error:", e);
+        console.error("Cloud Fetch Error:", e);
         return JSON.parse(localStorage.getItem('financeData_V10')) || [];
     }
 }
@@ -400,14 +399,12 @@ async function saveAllData(d) {
     try {
         await fetch(WEB_APP_URL, {
             method: 'POST',
-            mode: 'no-cors', // Menghindari masalah CORS di Google Apps Script
+            mode: 'no-cors', 
             body: JSON.stringify(d)
         });
-        console.log("Data berhasil dikirim ke Cloud");
-    } catch (e) {
-        console.error("Gagal Sinkronisasi:", e);
-    }
-}        
+    } catch (e) { console.error("Cloud Save Error"); }
+}
+        
         function getMultiBalances() { 
             return JSON.parse(localStorage.getItem('financeMultiBalances_V10')) || { 
                 Nathan: { atm: 0, inv: 0, cash: 0, other: 0 }, 
@@ -657,15 +654,25 @@ async function saveAllData(d) {
             e.currentTarget.classList.add("active-tab");
         }
 
-        updateMonthFilterOptions();
-        const initB = getMultiBalances()[currentActiveUser];
-        document.getElementById('initAtm').value = initB.atm;
-        document.getElementById('initInv').value = initB.inv;
-        document.getElementById('initCash').value = initB.cash;
-        document.getElementById('initOther').value = initB.other;
-        document.getElementById('inputDate').valueAsDate = new Date();
-        handleMainCatChange();
-        renderAll();
+        // Replace the bottom part of your script with this:
+async function initApp() {
+    // 1. Load Initial UI State
+    const initB = getMultiBalances()[currentActiveUser];
+    document.getElementById('initAtm').value = initB.atm;
+    document.getElementById('initInv').value = initB.inv;
+    document.getElementById('initCash').value = initB.cash;
+    document.getElementById('initOther').value = initB.other;
+    document.getElementById('inputDate').valueAsDate = new Date();
+    handleMainCatChange();
+
+    // 2. Fetch from Cloud and THEN Render
+    await updateMonthFilterOptions();
+    await renderAll();
+}
+
+// Start the app properly
+initApp();
+
     </script>
 </body>
 </html>s
