@@ -262,7 +262,7 @@
                         <h3 class="text-lg font-bold">Filter Ringkasan</h3>
                         <p class="text-xs text-slate-400 font-medium italic">Lihat persentase pengeluaran per periode</p>
                     </div>
-                    <select id="filterMonth" onchange="renderAll()" class="p-3 rounded-xl border dark:bg-slate-900 dark:border-slate-700 font-bold text-blue-600">
+                    <select id="filterMonth" onchange="await renderAll()" class="p-3 rounded-xl border dark:bg-slate-900 dark:border-slate-700 font-bold text-blue-600">
                         <option value="all">Seluruh Waktu (All Time)</option>
                     </select>
                 </div>
@@ -356,16 +356,18 @@
             "Tabungan/Investasi": ["Tabungan", "Investasi", "Dana Darurat"]
         };
 
+const API_URL = "https://script.google.com/macros/s/AKfycbxL8sxFZcm8L2dy8jy6AGGtG2hcbA4uDcf8D04d4i2k0r09flEXnpBRlMx1QJGfWvQn";
+
         let currentActiveUser = "Nathan";
 
-        function toggleDarkMode() {
+        async function toggleDarkMode() {
             const isDark = document.documentElement.classList.toggle('dark');
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
         }
 
         if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
 
-        function handleMainCatChange() {
+        async function handleMainCatChange() {
             const main = document.getElementById('mainCat').value;
             const sub = document.getElementById('subCat');
             sub.innerHTML = categories[main].map(cat => `<option value="${cat}">${cat}</option>`).join('');
@@ -380,42 +382,30 @@
             }
         }
 
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyx3F3CWOt91cu5PY2r830BQON4wOnyyA7RNZoErqEjsXFxxZmsJ65xcT-9s2ixjgI4/exec";
-
-async function getAllData() {
-    try {
-        const response = await fetch(WEB_APP_URL);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
-        localStorage.setItem('financeData_V10', JSON.stringify(data)); // Backup lokal
-        return data || [];
-    } catch (e) {
-        console.error("Cloud Error:", e);
-        return JSON.parse(localStorage.getItem('financeData_V10')) || [];
-    }
+        async function getAllData() {
+  const response = await fetch(API_URL);
+  const data = await response.json();
+  return data || [];
 }
 
 async function saveAllData(d) {
-    localStorage.setItem('financeData_V10', JSON.stringify(d));
-    try {
-        await fetch(WEB_APP_URL, {
-            method: 'POST',
-            mode: 'no-cors', // Menghindari masalah CORS di Google Apps Script
-            body: JSON.stringify(d)
-        });
-        console.log("Data berhasil dikirim ke Cloud");
-    } catch (e) {
-        console.error("Gagal Sinkronisasi:", e);
-    }
-}        
-        function getMultiBalances() { 
+  await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(d)
+  });
+}
+        
+        async function getMultiBalances() { 
             return JSON.parse(localStorage.getItem('financeMultiBalances_V10')) || { 
                 Nathan: { atm: 0, inv: 0, cash: 0, other: 0 }, 
                 Michelle: { atm: 0, inv: 0, cash: 0, other: 0 } 
             }; 
         }
         
-        function saveMultiBalances() {
+        async function saveMultiBalances() {
             let b = getMultiBalances();
             b[currentActiveUser] = {
                 atm: parseFloat(document.getElementById('initAtm').value) || 0,
@@ -424,58 +414,46 @@ async function saveAllData(d) {
                 other: parseFloat(document.getElementById('initOther').value) || 0
             };
             localStorage.setItem('financeMultiBalances_V10', JSON.stringify(b));
-            renderAll();
+            await renderAll();
             alert("Saldo awal " + currentActiveUser + " berhasil diperbarui!");
         }
 
         async function saveEntry() {
-    const val = document.getElementById('inputValue').value;
-    const date = document.getElementById('inputDate').value;
-    const editId = document.getElementById('editId').value;
-    if(!val || !date) return;
-
-    let d = await getAllData(); // Ambil data terbaru dari cloud dulu
-    
-    const entry = {
-        id: editId ? parseInt(editId) : Date.now(),
-        user: currentActiveUser,
-        date: date,
-        mainCat: document.getElementById('mainCat').value,
-        subCat: document.getElementById('subCat').value,
-        source: document.getElementById('inputSource').value,
-        value: parseFloat(val),
-        desc: document.getElementById('inputDesc').value,
-        type: document.getElementById('inputType').value
-    };
-
-    if(editId) {
-        const idx = d.findIndex(i => i.id === parseInt(editId));
-        if(idx !== -1) d[idx] = entry;
-    } else {
-        d.push(entry);
-    }
-
-    await saveAllData(d); // Tunggu sampai data tersimpan di cloud
-    cancelEdit();
-    
-    // Beri sedikit jeda agar server Google memproses data sebelum di-render ulang
-    setTimeout(async () => {
-        await updateMonthFilterOptions();
-        await renderAll();
-    }, 500); 
-}
-
-        function cancelEdit() {
-            document.getElementById('editId').value = "";
-            document.getElementById('inputValue').value = "";
-            document.getElementById('inputDesc').value = "";
-            document.getElementById('inputDate').valueAsDate = new Date();
-            document.getElementById('formTitle').innerHTML = `Input Transaksi: <span class="text-blue-600">${currentActiveUser}</span>`;
-            document.getElementById('cancelBtn').classList.add('hidden');
-            handleMainCatChange();
+            const val = document.getElementById('inputValue').value;
+            const date = document.getElementById('inputDate').value;
+            const editId = document.getElementById('editId').value;
+            if(!val || !date) return;
+            let d = getAllData();
+            const entry = {
+                id: editId ? parseInt(editId) : Date.now(),
+                user: currentActiveUser,
+                date: date,
+                mainCat: document.getElementById('mainCat').value,
+                subCat: document.getElementById('subCat').value,
+                source: document.getElementById('inputSource').value,
+                value: parseFloat(val),
+                desc: document.getElementById('inputDesc').value,
+                type: document.getElementById('inputType').value
+            };
+            if(editId) { d[d.findIndex(i => i.id === parseInt(editId))] = entry; }
+            else { d.push(entry); }
+            saveAllData(d);
+            cancelEdit();
+            updateMonthFilterOptions();
+            await renderAll();
         }
 
-        function switchUser() {
+        async function cancelEdit() {
+  document.getElementById('editId').value = "";
+  document.getElementById('inputValue').value = "";
+  document.getElementById('inputDesc').value = "";
+  document.getElementById('inputDate').valueAsDate = new Date();
+  document.getElementById('formTitle').innerHTML = `Input Transaksi: <span class="text-blue-600">${currentActiveUser}</span>`;
+  document.getElementById('cancelBtn').classList.add('hidden');
+  handleMainCatChange();
+}
+
+        async function switchUser() {
             currentActiveUser = document.getElementById('currentUser').value;
             document.getElementById('userLabel').innerText = currentActiveUser;
             document.getElementById('wealthLabel').innerText = `TOTAL KEKAYAAN AKTIF (${currentActiveUser.toUpperCase()})`;
@@ -485,32 +463,25 @@ async function saveAllData(d) {
             document.getElementById('initCash').value = b.cash;
             document.getElementById('initOther').value = b.other;
             cancelEdit();
-            renderAll();
+            await renderAll();
         }
 
-        function formatIDR(n) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n); }
+        async function formatIDR(n) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n); }
 
-        // Ganti fungsi lama dengan ini
-async function updateMonthFilterOptions() {
-    const d = await getAllData(); // Tambahkan 'await' di sini
-    const filter = document.getElementById('filterMonth');
-    const currentVal = filter.value;
-    
-    // Validasi: Pastikan data adalah array untuk mencegah error .map()
-    const dataArray = Array.isArray(d) ? d : [];
-    const months = [...new Set(dataArray.map(i => i.date.substring(0, 7)))].sort().reverse();
-    
-    let html = '<option value="all">Seluruh Waktu (All Time)</option>';
-    months.forEach(m => {
-        html += `<option value="${m}">${m}</option>`;
-    });
-    filter.innerHTML = html;
-    filter.value = currentVal;
-}
+        async function updateMonthFilterOptions() {
+            const d = await getAllData();
+            const filter = document.getElementById('filterMonth');
+            const currentVal = filter.value;
+            const months = [...new Set(d.map(i => i.date.substring(0, 7)))].sort().reverse();
+            let html = '<option value="all">Seluruh Waktu (All Time)</option>';
+            months.forEach(m => { html += `<option value="${m}">${m}</option>`; });
+            filter.innerHTML = html;
+            filter.value = currentVal;
+        }
+
         async function renderAll() {
-    const d = await getAllData(); // KRUSIAL: Menunggu data dari spreadsheet
-    const multiB = getMultiBalances();
-    // ... sisa kode pengolahan data Anda di bawahnya tetap sama ...
+            const d = await getAllData();
+            const multiB = getMultiBalances();
             const bInitial = multiB[currentActiveUser];
             const filterM = document.getElementById('filterMonth').value;
             
@@ -627,7 +598,7 @@ async function updateMonthFilterOptions() {
             renderMonthly('Michelle', 'monthlyMichelleBody');
         }
 
-        function editEntry(id) {
+        async function editEntry(id) {
             const i = getAllData().find(x => x.id === id);
             document.getElementById('editId').value = i.id;
             document.getElementById('inputDate').value = i.date;
@@ -644,48 +615,24 @@ async function updateMonthFilterOptions() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        async function deleteEntry(id) { // Tambah async
-    if(confirm("Hapus?")) { 
-        const d = await getAllData(); // Ambil data terbaru
-        await saveAllData(d.filter(i => i.id !== id)); // Simpan setelah difilter
-        // Menjalankan fungsi async saat pertama kali dibuka
-(async () => {
-    await updateMonthFilterOptions();
-    await renderAll();
-})();
-    } 
-}
+        async function deleteEntry(id) { if(confirm("Hapus?")) { saveAllData(getAllData().filter(i => i.id !== id)); updateMonthFilterOptions(); await renderAll(); } }
 
-        function openTab(e, n) {
+        async function openTab(e, n) {
             document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
             document.querySelectorAll("#tabList button").forEach(b => b.classList.remove("active-tab"));
             document.getElementById(n).classList.add("active");
             e.currentTarget.classList.add("active-tab");
         }
 
-        // Ganti baris paling bawah kode Anda dengan ini:
-// Ganti blok inisialisasi lama dengan IIFE async ini:
-(async () => {
-    try {
-        // 1. Update filter bulan dari data cloud
-        await updateMonthFilterOptions();
-        
-        // 2. Set saldo awal dari localStorage
+        updateMonthFilterOptions();
         const initB = getMultiBalances()[currentActiveUser];
         document.getElementById('initAtm').value = initB.atm;
         document.getElementById('initInv').value = initB.inv;
         document.getElementById('initCash').value = initB.cash;
         document.getElementById('initOther').value = initB.other;
         document.getElementById('inputDate').valueAsDate = new Date();
-        
-        // 3. Render kategori dan data transaksi
         handleMainCatChange();
         await renderAll();
-    } catch (error) {
-        console.error("Initialization failed:", error);
-    }
-})();
-
     </script>
 </body>
-</html>
+</html>s
