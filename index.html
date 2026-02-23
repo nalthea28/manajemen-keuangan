@@ -385,9 +385,12 @@
 async function getAllData() {
     try {
         const response = await fetch(WEB_APP_URL);
+        if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
+        localStorage.setItem('financeData_V10', JSON.stringify(data)); // Backup lokal
         return data || [];
     } catch (e) {
+        console.error("Cloud Error:", e);
         return JSON.parse(localStorage.getItem('financeData_V10')) || [];
     }
 }
@@ -397,12 +400,14 @@ async function saveAllData(d) {
     try {
         await fetch(WEB_APP_URL, {
             method: 'POST',
-            mode: 'no-cors',
+            mode: 'no-cors', // Menghindari masalah CORS di Google Apps Script
             body: JSON.stringify(d)
         });
-    } catch (e) { console.error("Cloud Sync Error"); }
-}
-        
+        console.log("Data berhasil dikirim ke Cloud");
+    } catch (e) {
+        console.error("Gagal Sinkronisasi:", e);
+    }
+}        
         function getMultiBalances() { 
             return JSON.parse(localStorage.getItem('financeMultiBalances_V10')) || { 
                 Nathan: { atm: 0, inv: 0, cash: 0, other: 0 }, 
@@ -423,13 +428,13 @@ async function saveAllData(d) {
             alert("Saldo awal " + currentActiveUser + " berhasil diperbarui!");
         }
 
-        async function saveEntry() { // Tambah async
+        async function saveEntry() {
     const val = document.getElementById('inputValue').value;
     const date = document.getElementById('inputDate').value;
     const editId = document.getElementById('editId').value;
     if(!val || !date) return;
 
-    let d = await getAllData(); // Tambah await
+    let d = await getAllData(); // Ambil data terbaru dari cloud dulu
     
     const entry = {
         id: editId ? parseInt(editId) : Date.now(),
@@ -443,13 +448,21 @@ async function saveAllData(d) {
         type: document.getElementById('inputType').value
     };
 
-    if(editId) { d[d.findIndex(i => i.id === parseInt(editId))] = entry; }
-    else { d.push(entry); }
+    if(editId) {
+        const idx = d.findIndex(i => i.id === parseInt(editId));
+        if(idx !== -1) d[idx] = entry;
+    } else {
+        d.push(entry);
+    }
 
-    await saveAllData(d); // Tambah await
+    await saveAllData(d); // Tunggu sampai data tersimpan di cloud
     cancelEdit();
-    updateMonthFilterOptions();
-    renderAll();
+    
+    // Beri sedikit jeda agar server Google memproses data sebelum di-render ulang
+    setTimeout(async () => {
+        await updateMonthFilterOptions();
+        await renderAll();
+    }, 500); 
 }
 
         function cancelEdit() {
@@ -488,10 +501,10 @@ async function saveAllData(d) {
             filter.value = currentVal;
         }
 
-        async function renderAll() { // Tambah async
-    const d = await getAllData(); // Tambah await
+        async function renderAll() {
+    const d = await getAllData(); // KRUSIAL: Menunggu data dari spreadsheet
     const multiB = getMultiBalances();
-    // ... sisanya sama persis ...
+    // ... sisa kode pengolahan data Anda di bawahnya tetap sama ...
             const bInitial = multiB[currentActiveUser];
             const filterM = document.getElementById('filterMonth').value;
             
@@ -629,8 +642,11 @@ async function saveAllData(d) {
     if(confirm("Hapus?")) { 
         const d = await getAllData(); // Ambil data terbaru
         await saveAllData(d.filter(i => i.id !== id)); // Simpan setelah difilter
-        updateMonthFilterOptions(); 
-        renderAll(); 
+        // Menjalankan fungsi async saat pertama kali dibuka
+(async () => {
+    await updateMonthFilterOptions();
+    await renderAll();
+})();
     } 
 }
 
