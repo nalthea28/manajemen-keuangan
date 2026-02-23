@@ -490,17 +490,21 @@ async function saveAllData(d) {
 
         function formatIDR(n) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n); }
 
-        function updateMonthFilterOptions() {
-            const d = getAllData();
-            const filter = document.getElementById('filterMonth');
-            const currentVal = filter.value;
-            const months = [...new Set(d.map(i => i.date.substring(0, 7)))].sort().reverse();
-            let html = '<option value="all">Seluruh Waktu (All Time)</option>';
-            months.forEach(m => { html += `<option value="${m}">${m}</option>`; });
-            filter.innerHTML = html;
-            filter.value = currentVal;
-        }
-
+        // Ganti fungsi lama dengan ini
+async function updateMonthFilterOptions() {
+    const d = await getAllData(); // Tambahkan await di sini
+    const filter = document.getElementById('filterMonth');
+    const currentVal = filter.value;
+    
+    // Pastikan d adalah array sebelum melakukan map
+    const dataArray = Array.isArray(d) ? d : [];
+    const months = [...new Set(dataArray.map(i => i.date.substring(0, 7)))].sort().reverse();
+    
+    let html = '<option value="all">Seluruh Waktu (All Time)</option>';
+    months.forEach(m => { html += `<option value="${m}">${m}</option>`; });
+    filter.innerHTML = html;
+    filter.value = currentVal;
+}
         async function renderAll() {
     const d = await getAllData(); // KRUSIAL: Menunggu data dari spreadsheet
     const multiB = getMultiBalances();
@@ -657,15 +661,22 @@ async function saveAllData(d) {
             e.currentTarget.classList.add("active-tab");
         }
 
-        updateMonthFilterOptions();
-        const initB = getMultiBalances()[currentActiveUser];
-        document.getElementById('initAtm').value = initB.atm;
-        document.getElementById('initInv').value = initB.inv;
-        document.getElementById('initCash').value = initB.cash;
-        document.getElementById('initOther').value = initB.other;
-        document.getElementById('inputDate').valueAsDate = new Date();
-        handleMainCatChange();
-        renderAll();
+        // Ganti baris paling bawah kode Anda dengan ini:
+(async () => {
+    // Jalankan update filter terlebih dahulu
+    await updateMonthFilterOptions();
+    
+    const initB = getMultiBalances()[currentActiveUser];
+    document.getElementById('initAtm').value = initB.atm;
+    document.getElementById('initInv').value = initB.inv;
+    document.getElementById('initCash').value = initB.cash;
+    document.getElementById('initOther').value = initB.other;
+    document.getElementById('inputDate').valueAsDate = new Date();
+    
+    handleMainCatChange();
+    // Render semua data dari cloud
+    await renderAll();
+})();
     </script>
 </body>
 </html>
