@@ -468,7 +468,7 @@ async function saveAllData(d) { await saveData(d); }
         function formatIDR(n) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n); }
 
         function updateMonthFilterOptions() {
-            const d = await getAllData();
+            const d = getAllData();
             const filter = document.getElementById('filterMonth');
             const currentVal = filter.value;
             const months = [...new Set(d.map(i => i.date.substring(0, 7)))].sort().reverse();
@@ -637,3 +637,4 @@ async function saveAllData(d) { await saveData(d); }
     </script>
 </body>
 </html>s
+
