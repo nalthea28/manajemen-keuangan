@@ -492,16 +492,18 @@ async function saveAllData(d) {
 
         // Ganti fungsi lama dengan ini
 async function updateMonthFilterOptions() {
-    const d = await getAllData(); // Tambahkan await di sini
+    const d = await getAllData(); // Tambahkan 'await' di sini
     const filter = document.getElementById('filterMonth');
     const currentVal = filter.value;
     
-    // Pastikan d adalah array sebelum melakukan map
+    // Validasi: Pastikan data adalah array untuk mencegah error .map()
     const dataArray = Array.isArray(d) ? d : [];
     const months = [...new Set(dataArray.map(i => i.date.substring(0, 7)))].sort().reverse();
     
     let html = '<option value="all">Seluruh Waktu (All Time)</option>';
-    months.forEach(m => { html += `<option value="${m}">${m}</option>`; });
+    months.forEach(m => {
+        html += `<option value="${m}">${m}</option>`;
+    });
     filter.innerHTML = html;
     filter.value = currentVal;
 }
@@ -662,21 +664,28 @@ async function updateMonthFilterOptions() {
         }
 
         // Ganti baris paling bawah kode Anda dengan ini:
+// Ganti blok inisialisasi lama dengan IIFE async ini:
 (async () => {
-    // Jalankan update filter terlebih dahulu
-    await updateMonthFilterOptions();
-    
-    const initB = getMultiBalances()[currentActiveUser];
-    document.getElementById('initAtm').value = initB.atm;
-    document.getElementById('initInv').value = initB.inv;
-    document.getElementById('initCash').value = initB.cash;
-    document.getElementById('initOther').value = initB.other;
-    document.getElementById('inputDate').valueAsDate = new Date();
-    
-    handleMainCatChange();
-    // Render semua data dari cloud
-    await renderAll();
+    try {
+        // 1. Update filter bulan dari data cloud
+        await updateMonthFilterOptions();
+        
+        // 2. Set saldo awal dari localStorage
+        const initB = getMultiBalances()[currentActiveUser];
+        document.getElementById('initAtm').value = initB.atm;
+        document.getElementById('initInv').value = initB.inv;
+        document.getElementById('initCash').value = initB.cash;
+        document.getElementById('initOther').value = initB.other;
+        document.getElementById('inputDate').valueAsDate = new Date();
+        
+        // 3. Render kategori dan data transaksi
+        handleMainCatChange();
+        await renderAll();
+    } catch (error) {
+        console.error("Initialization failed:", error);
+    }
 })();
+
     </script>
 </body>
 </html>
